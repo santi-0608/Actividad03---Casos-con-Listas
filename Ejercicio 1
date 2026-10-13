@@ -1,0 +1,151 @@
+%% UNIVERSIDAD TECNOLOGICA DE PEREIRA
+%% FACULTAD DE INGENIERIAS
+%% INGENIERIA DE SISTEMAS Y COMPUTACION
+%% PROGRAMACION III - Actividad 5
+%% Punto 1: Arbol genealogico Simpson, usando ESTRUCTURAS y LISTAS
+
+
+% En lugar de hechos sueltos padre/2, madre/2, hombre/1, mujer/1,
+% cada persona se representa con la ESTRUCTURA:
+%     persona(Nombre, Sexo, Padre, Madre)
+% y todas las personas se almacenan en UNA SOLA LISTA dentro del
+% hecho familia/1. 'ninguno' indica que no se conoce ese progenitor.
+
+familia([
+    persona(abraham,   masculino, ninguno, ninguno),
+    persona(mona,       femenino, ninguno, ninguno),
+    persona(clancy,     masculino, ninguno, ninguno),
+    persona(jacqueline, femenino, ninguno, ninguno),
+
+    persona(herbert,    masculino, abraham, mona),
+    persona(homero,     masculino, abraham, mona),
+    persona(marge,       femenino, clancy, jacqueline),
+    persona(patty,       femenino, clancy, jacqueline),
+    persona(selma,       femenino, clancy, jacqueline),
+
+    persona(bart,        masculino, homero, marge),
+    persona(lisa,         femenino, homero, marge),
+    persona(maggie,       femenino, homero, marge),
+    persona(ling,          femenino, ninguno, selma)
+]).
+
+% Las parejas tambien se representan como una LISTA de estructuras
+% pareja(Esposo, Esposa).
+parejas([
+    pareja(abraham, mona),
+    pareja(clancy, jacqueline),
+    pareja(homero, marge)
+]).
+
+% ---------- REGLAS DE ACCESO (leen la lista con member/2) ----------
+% Estas reglas son la UNICA parte que cambia respecto al programa
+% original: en vez de ser hechos directos, ahora recorren la lista
+% de estructuras 'persona/4' para obtener la misma informacion.
+
+padre(X, Y) :-
+    familia(L),
+    member(persona(Y, _, X, _), L),
+    X \== ninguno.
+
+madre(X, Y) :-
+    familia(L),
+    member(persona(Y, _, _, X), L),
+    X \== ninguno.
+
+hombre(X) :-
+    familia(L),
+    member(persona(X, masculino, _, _), L).
+
+mujer(X) :-
+    familia(L),
+    member(persona(X, femenino, _, _), L).
+
+esposos(X, Y) :-
+    parejas(L),
+    member(pareja(X, Y), L).
+
+%  REGLAS DERIVADAS (relaciones de mas de 1 generacion) 
+
+progenitor(X, Y) :- padre(X, Y).
+progenitor(X, Y) :- madre(X, Y).
+
+hijo(X, Y) :- progenitor(Y, X).
+
+hermano(X, Y) :- hombre(X), progenitor(P, X), progenitor(P, Y), X \== Y.
+hermana(X, Y) :- mujer(X), progenitor(P, X), progenitor(P, Y), X \== Y.
+
+abuelo(X, Y) :- hombre(X), progenitor(X, Z), progenitor(Z, Y).
+abuela(X, Y) :- mujer(X), progenitor(X, Z), progenitor(Z, Y).
+
+nieto(X, Y) :- hombre(X), abuelo(Y, X).
+nieto(X, Y) :- hombre(X), abuela(Y, X).
+nieta(X, Y) :- mujer(X), abuelo(Y, X).
+nieta(X, Y) :- mujer(X), abuela(Y, X).
+
+tio(X, Y) :- hombre(X), progenitor(P, Y), hermano(X, P).
+tia(X, Y) :- mujer(X), progenitor(P, Y), hermana(X, P).
+
+primo(X, Y) :- hombre(X), progenitor(P, X), (tio(P, Y) ; tia(P, Y)).
+prima(X, Y) :- mujer(X), progenitor(P, X), (tio(P, Y) ; tia(P, Y)).
+
+cuniado(X, Y) :-
+    hombre(X),
+    ( (esposos(Y, Z) ; esposos(Z, Y)), hermano(X, Z)
+    ; (esposos(X, Z) ; esposos(Z, X)), (hermano(Z, Y) ; hermana(Z, Y))
+    ).
+
+ancestro(X, Y) :- progenitor(X, Y).
+ancestro(X, Y) :- progenitor(X, Z), ancestro(Z, Y).
+
+
+%% CONSULTAS DE VALIDACION
+
+print_query(Goal, Var) :-
+    findall(Var, Goal, L0),
+    sort(L0, L),
+    ( L == []
+    -> write('   (sin resultados)'), nl
+    ;  forall(member(V, L), (format('   X = ~w~n', [V])))
+    ).
+
+:- initialization(main).
+
+main :-
+    nl, write('=== PUNTO 1: Familia Simpson (con estructuras y listas) ==='), nl,
+
+    nl, write('-- Acceso derivado de la lista familia/1 --'), nl,
+    write('?- padre(homero, bart).'), nl,
+    ( padre(homero, bart) -> write('   true.') ; write('   false.') ), nl,
+
+    write('?- madre(marge, lisa).'), nl,
+    ( madre(marge, lisa) -> write('   true.') ; write('   false.') ), nl,
+
+    nl, write('-- Reglas derivadas (mas de una generacion) --'), nl,
+    write('?- abuelo(X, bart).'), nl,
+    print_query(abuelo(X, bart), X),
+
+    write('?- abuela(X, bart).'), nl,
+    print_query(abuela(X, bart), X),
+
+    write('?- hermana(X, bart).'), nl,
+    print_query(hermana(X, bart), X),
+
+    write('?- tia(X, bart).'), nl,
+    print_query(tia(X, bart), X),
+
+    write('?- tio(X, bart).'), nl,
+    print_query(tio(X, bart), X),
+
+    write('?- prima(X, bart).'), nl,
+    print_query(prima(X, bart), X),
+
+    write('?- primo(X, bart).'), nl,
+    print_query(primo(X, bart), X),
+
+    write('?- nieto(bart, X).'), nl,
+    print_query(nieto(bart, X), X),
+
+    write('?- ancestro(X, bart).'), nl,
+    print_query(ancestro(X, bart), X),
+
+    nl.

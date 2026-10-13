@@ -1,0 +1,96 @@
+%% UNIVERSIDAD TECNOLOGICA DE PEREIRA
+%% FACULTAD DE INGENIERIAS
+%% INGENIERIA DE SISTEMAS Y COMPUTACION
+%% PROGRAMACION III - Actividad 5
+%% Punto 2: Grafo dirigido ciudades de Canada, usando ESTRUCTURAS y LISTAS
+
+% En lugar de hechos sueltos arista(Origen, Destino, Costo), cada
+% conexion se representa con la ESTRUCTURA arco(Origen, Destino, Costo)
+% y todas las conexiones se almacenan en UNA SOLA LISTA dentro del
+% hecho grafo/1.
+% s=vancouver, v1=edmonton, v2=calgary, v3=saskatoon, v4=regina, t=winnipeg
+
+grafo([
+    arco(vancouver, edmonton, 16),
+    arco(vancouver, calgary, 13),
+    arco(calgary, edmonton, 4),
+    arco(edmonton, saskatoon, 12),
+    arco(saskatoon, calgary, 9),
+    arco(calgary, regina, 14),
+    arco(regina, saskatoon, 7),
+    arco(saskatoon, winnipeg, 20),
+    arco(regina, winnipeg, 4)
+]).
+
+% ---------- REGLA DE ACCESO (lee la lista con member/2) ----------
+% Esta es la UNICA parte que cambia respecto al programa original:
+% arista/3 ya no es un conjunto de hechos sueltos, sino que recorre
+% la lista de estructuras 'arco/3' guardada en grafo/1.
+
+arista(X, Y, C) :-
+    grafo(L),
+    member(arco(X, Y, C), L).
+
+%  REGLAS DERIVADAS 
+
+
+% -- Existe una conexion (camino dirigido) entre X y Y --
+conexion(X, Y) :- conexion(X, Y, [X]).
+
+conexion(X, Y, _) :- arista(X, Y, _).
+conexion(X, Y, Visitados) :-
+    arista(X, Z, _),
+    \+ member(Z, Visitados),
+    conexion(Z, Y, [Z | Visitados]).
+
+% -- Con que nodos esta conectado un nodo y el costo de cada conexion --
+conectado_con(Nodo, Vecino, Costo) :- arista(Nodo, Vecino, Costo).
+
+% -- Un nodo tiene aristas (entrantes o salientes) --
+tiene_aristas(Nodo) :- arista(Nodo, _, _).
+tiene_aristas(Nodo) :- arista(_, Nodo, _).
+
+% -- Costo de ir de X a Z pasando por Y --
+costo_via(X, Y, Z, CostoTotal) :-
+    arista(X, Y, C1),
+    arista(Y, Z, C2),
+    CostoTotal is C1 + C2.
+
+
+%% CONSULTAS DE VALIDACION 
+
+print_query(Goal, Var) :-
+    findall(Var, Goal, L0),
+    sort(L0, L),
+    ( L == []
+    -> write('   (sin resultados / no existe solucion)'), nl
+    ;  forall(member(V, L), (format('   X = ~w~n', [V])))
+    ).
+
+:- initialization(main).
+
+main :-
+    nl, write('=== Grafo dirigido Canada (con estructuras y listas) ==='), nl,
+
+    write('?- conexion(saskatoon, vancouver).'), nl,
+    ( conexion(saskatoon, vancouver)
+    -> write('   true.')
+    ;  write('   false. (Vancouver es la fuente: no tiene aristas entrantes)') ), nl,
+
+    write('?- conectado_con(regina, X, Costo).'), nl,
+    forall(conectado_con(regina, X, Costo), format('   ~w -> ~w, costo = ~w~n', [regina, X, Costo])),
+
+    write('?- tiene_aristas(X).'), nl,
+    print_query(tiene_aristas(X), X),
+
+    write('?- costo_via(vancouver, calgary, regina, Costo).'), nl,
+    ( costo_via(vancouver, calgary, regina, CostoVCR)
+    -> format('   Costo = ~w~n', [CostoVCR])
+    ;  write('   false.') ), nl,
+
+    write('?- conexion(edmonton, calgary).'), nl,
+    ( conexion(edmonton, calgary)
+    -> write('   true. (Si es posible: edmonton -> saskatoon -> calgary)')
+    ;  write('   false.') ), nl,
+
+    nl.
